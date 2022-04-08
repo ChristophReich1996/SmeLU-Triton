@@ -116,6 +116,7 @@ class _SmeLU(autograd.Function):
         # Save input tensor and beta value for backward pass
         ctx.save_for_backward(input)
         ctx.beta = beta
+        # Compute output activation
         output: torch.Tensor = _smelu_triton_forward(input=input, beta=beta)
         return output
 
@@ -130,8 +131,10 @@ class _SmeLU(autograd.Function):
         :param grad_output (torch.Tensor): Previous gradient
         :return (Tuple[torch.Tensor, None]): Gradient of input
         """
+        # Get saved variables
         input, = ctx.saved_tensors
         beta: float = ctx.beta
+        # Compute gradient
         gradient = _smelu_triton_backward(input=input, beta=beta)
         return gradient * grad_output, None
 
