@@ -23,7 +23,7 @@ pip install -U --pre triton
 If Triton is installed the SmeLU can be installed by using `pip`.
 
 ````shell script
-pip install git+https://github.com/ChristophReich1996/SmeLU
+pip install git+https://github.com/ChristophReich1996/SmeLU-Triton
 ````
 
 ## Example Usage
