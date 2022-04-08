@@ -62,6 +62,8 @@ The SmeLU takes the following parameters.
 | SmeLU pure PyTorch (on GPU) | ~10 x `nn.ReLU()` | 
 | SmeLU Triton/PyTorch (on GPU) | ~1.6 x `nn.ReLU()` | 
 
+Runtime experiments performed on Google Colab.
+
 ## Reference
 
 ````bibtex
