@@ -8,6 +8,6 @@ setup(
     author="Christoph Reich",
     author_email="ChristophReich@gmx.net",
     description="Triton/PyTorch SmeLU",
-    packages=["smelu",],
+    packages=["smelu", "smelu_pytorch", "smelu_triton"],
     install_requires=["torch>=1.0.0"],
 )
