@@ -10,8 +10,6 @@ Unofficial **Triton/PyTorch** reimplementation of the Smooth ReLU (SmeLU) activa
 paper [Real World Large Scale Recommendation Systems Reproducibility and Smooth Activations](https://arxiv.org/pdf/2202.06499.pdf)
 by Gil I. Shamir and Dong Lin.
 
-**This repository includes an easy-to-use pure Triton/PyTorch implementation of the Smooth ReLU.**
-
 ## Installation
 
 For using the [Triton](https://github.com/openai/triton) implementation the nightly release of Triton needs to be installed.
