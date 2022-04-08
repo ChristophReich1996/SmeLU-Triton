@@ -104,7 +104,7 @@ class _SmeLU(autograd.Function):
     def forward(
             ctx,
             input: torch.Tensor,
-            beta: torch.Tensor
+            beta: float
     ) -> torch.Tensor:
         """
         Forward pass.
@@ -113,9 +113,10 @@ class _SmeLU(autograd.Function):
         :param beta (torch.Tensor): Beta value as a scalar tensor
         :return (torch.Tensor): Activation tensor of the same shape as the input
         """
-        assert not beta.requires_grad, "Gradients for beta not supported!"
-        ctx.save_for_backward(input, beta)
-        output: torch.Tensor = _smelu_triton_forward(input=input, beta=beta.item())
+        # Save input tensor and beta value for backward pass
+        ctx.save_for_backward(input)
+        ctx.beta = beta
+        output: torch.Tensor = _smelu_triton_forward(input=input, beta=beta)
         return output
 
     @staticmethod
@@ -127,9 +128,10 @@ class _SmeLU(autograd.Function):
         Backward pass.
         :param ctx: Context variable
         :param grad_output (torch.Tensor): Previous gradient
-        :return (Tuple[torch.Tensor, None]): Gradient of input and beta (always None!)
+        :return (Tuple[torch.Tensor, None]): Gradient of input
         """
-        input, beta = ctx.saved_tensors
+        input, = ctx.saved_tensors
+        beta: float = ctx.beta
         gradient = _smelu_triton_backward(input=input, beta=beta)
         return gradient * grad_output, None
 
@@ -175,4 +177,4 @@ class SmeLU(nn.Module):
         :param input (torch.Tensor): Tensor of any shape
         :return (torch.Tensor): Output activation tensor of the same shape as the input tensor
         """
-        return smelu_function(input, torch.tensor(self.beta))
+        return smelu_function(input, self.beta)
