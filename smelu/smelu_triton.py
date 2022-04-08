@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 from torch import autograd
 import torch.nn as nn
@@ -6,12 +8,14 @@ import triton.language as tl
 
 
 @triton.jit
-def _smelu_kernel_forward(input_pointer,
-                          beta: float,
-                          output_pointer,
-                          n_elements: int,
-                          BLOCK_SIZE: tl.constexpr,
-                          ):
+def _smelu_kernel_forward(
+        input_pointer,
+        beta: float,
+        output_pointer,
+        n_elements: int,
+        BLOCK_SIZE: tl.constexpr,
+):
+    """ Triton kernel SmeLU forward """
     pid = tl.program_id(axis=0)
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
@@ -24,7 +28,16 @@ def _smelu_kernel_forward(input_pointer,
     tl.store(output_pointer + offsets, output, mask=mask)
 
 
-def _smelu_triton_forward(input: torch.Tensor, beta: float = 2.) -> torch.Tensor:
+def _smelu_triton_forward(
+        input: torch.Tensor,
+        beta: float = 2.
+) -> torch.Tensor:
+    """
+    Wrapper function for SmeLU forward triton kernel
+    :param input (torch.Tensor): Input tensor of any shape
+    :param beta (float): Beta value of SmeLU
+    :return (torch.Tensor): Activation of SmeLU
+    """
     # Init output tensor
     output: torch.Tensor = torch.empty_like(input)
     # Make input contiguous if needed
@@ -39,12 +52,14 @@ def _smelu_triton_forward(input: torch.Tensor, beta: float = 2.) -> torch.Tensor
 
 
 @triton.jit
-def _smelu_kernel_backward(input_pointer,
-                           beta: float,
-                           output_pointer,
-                           n_elements: int,
-                           BLOCK_SIZE: tl.constexpr,
-                           ):
+def _smelu_kernel_backward(
+        input_pointer,
+        beta: float,
+        output_pointer,
+        n_elements: int,
+        BLOCK_SIZE: tl.constexpr,
+):
+    """ Triton kernel SmeLU backward """
     pid = tl.program_id(axis=0)
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
@@ -57,7 +72,16 @@ def _smelu_kernel_backward(input_pointer,
     tl.store(output_pointer + offsets, gradient, mask=mask)
 
 
-def _smelu_triton_backward(input: torch.Tensor, beta: float = 2.) -> torch.Tensor:
+def _smelu_triton_backward(
+        input: torch.Tensor,
+        beta: float = 2.
+) -> torch.Tensor:
+    """
+    Wrapper function for SmeLU backward triton kernel
+    :param input (torch.Tensor): Input tensor of any shape
+    :param beta (float): Beta value of SmeLU
+    :return (torch.Tensor): Gradient of SmeLU
+    """
     # Init output tensor
     output: torch.Tensor = torch.empty_like(input)
     # Make input contiguous if needed
@@ -72,31 +96,58 @@ def _smelu_triton_backward(input: torch.Tensor, beta: float = 2.) -> torch.Tenso
 
 
 class _SmeLU(autograd.Function):
+    """
+    Autograd wrapper for triton implementation.
+    """
 
     @staticmethod
-    def forward(ctx, input: torch.Tensor, beta: torch.Tensor) -> torch.Tensor:
+    def forward(
+            ctx,
+            input: torch.Tensor,
+            beta: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Forward pass.
+        :param ctx: Context variable
+        :param input (torch.Tensor): Input tensor of any shape
+        :param beta (torch.Tensor): Beta value as a scalar tensor
+        :return (torch.Tensor): Activation tensor of the same shape as the input
+        """
         assert not beta.requires_grad, "Gradients for beta not supported!"
         ctx.save_for_backward(input, beta)
         output: torch.Tensor = _smelu_triton_forward(input=input, beta=beta.item())
         return output
 
     @staticmethod
-    def backward(ctx, grad_output: torch.Tensor) -> torch.Tensor:
+    def backward(
+            ctx,
+            grad_output: torch.Tensor
+    ) -> Tuple[torch.Tensor, None]:
+        """
+        Backward pass.
+        :param ctx: Context variable
+        :param grad_output (torch.Tensor): Previous gradient
+        :return (Tuple[torch.Tensor, None]): Gradient of input and beta (always None!)
+        """
         input, beta = ctx.saved_tensors
         gradient = _smelu_triton_backward(input=input, beta=beta)
         return gradient * grad_output, None
 
 
+# Make autograd function
 smelu_function = _SmeLU.apply
 
 
 class SmeLU(nn.Module):
     """
     This class implements the Smooth ReLU (SmeLU) activation function proposed in:
-    https://arxiv.org/pdf/2202.06499.pdf
+    https://arxiv.org/pdf/2202.06499.pdf.
     """
 
-    def __init__(self, beta: float = 2.) -> None:
+    def __init__(
+            self,
+            beta: float = 2.
+    ) -> None:
         """
         Constructor method.
         :param beta (float): Beta value if the SmeLU activation function. Default 2.
@@ -115,7 +166,10 @@ class SmeLU(nn.Module):
         """
         return f"SmeLU(beta={self.beta})"
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(
+            self,
+            input: torch.Tensor
+    ) -> torch.Tensor:
         """
         Forward pass.
         :param input (torch.Tensor): Tensor of any shape
